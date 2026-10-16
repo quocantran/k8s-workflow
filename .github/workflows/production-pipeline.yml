@@ -103,7 +103,10 @@ jobs:
           kubectl apply -f k8s/01-namespace.yaml
           kubectl apply -f k8s/02-external-mysql.yaml
           kubectl apply -f k8s/03-configmap.yaml
-          kubectl apply -f k8s/03-secret.yaml 2>/dev/null || kubectl apply -f k8s/03-secret.yaml.example
+          # Apply secret only if not already present on cluster (prevent overwriting real secrets)
+          if ! kubectl get secret movie-db-secret -n movie-booking >/dev/null 2>&1; then
+            kubectl apply -f k8s/03-secret.yaml 2>/dev/null || kubectl apply -f k8s/03-secret.yaml.example
+          fi
           kubectl apply -f k8s/04-redis.yaml
           kubectl apply -f k8s/08-ingress.yaml
           kubectl apply -f k8s/09-hpa.yaml

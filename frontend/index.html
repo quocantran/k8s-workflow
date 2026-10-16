@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineCloud - Movie Ticket Booking (Kubernetes Demo)</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="background-glow glow-1"></div>
+  <div class="background-glow glow-2"></div>
+
+  <header class="app-header">
+    <div class="container header-container">
+      <div class="logo">
+        <span class="logo-icon">🎬</span>
+        <span class="logo-text">Cine<span>Cloud</span></span>
+        <span class="k8s-badge">Kubernetes Powered</span>
+      </div>
+      <div class="system-status">
+        <div class="status-indicator online"></div>
+        <span id="system-status-text">Đang kết nối cụm K8s...</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <section class="hero-section">
+      <h1 class="hero-title">Đặt Vé Xem Phim Siêu Nhanh</h1>
+      <p class="hero-subtitle">
+        Hệ thống Microservices tinh gọn trên K3s: 
+        <span class="tech-tag">Frontend Nginx</span> + 
+        <span class="tech-tag">NestJS Gateway</span> + 
+        <span class="tech-tag">NestJS Backend</span> + 
+        <span class="tech-tag">Redis Cache</span> + 
+        <span class="tech-tag">Percona MySQL (Host)</span>
+      </p>
+    </section>
+
+    <!-- System Diagnostics Bar -->
+    <div class="diagnostics-card" id="diagnostics-card">
+      <div class="diag-item">
+        <span class="diag-label">Data Source:</span>
+        <span class="diag-val" id="diag-source">--</span>
+      </div>
+      <div class="diag-item">
+        <span class="diag-label">Redis Cache:</span>
+        <span class="diag-val" id="diag-redis">--</span>
+      </div>
+      <div class="diag-item">
+        <span class="diag-label">Percona MySQL:</span>
+        <span class="diag-val" id="diag-db">--</span>
+      </div>
+      <div class="diag-item">
+        <span class="diag-label">Response Time:</span>
+        <span class="diag-val" id="diag-time">-- ms</span>
+      </div>
+    </div>
+
+    <!-- Movie List -->
+    <section class="movies-section">
+      <div class="section-header">
+        <h2>Phim Đang Chiếu</h2>
+        <button id="btn-refresh" class="btn btn-secondary">🔄 Làm mới Cache</button>
+      </div>
+
+      <div class="movies-grid" id="movies-container">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Đang tải dữ liệu phim từ Backend Microservice...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Booking Modal -->
+  <div class="modal-overlay" id="booking-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-movie-title">Đặt Vé Phim</h3>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <form id="booking-form">
+        <input type="hidden" id="modal-movie-id">
+        <div class="form-group">
+          <label for="customer-name">Họ và Tên:</label>
+          <input type="text" id="customer-name" placeholder="Nguyễn Văn A" required>
+        </div>
+        <div class="form-group">
+          <label for="seat-count">Số lượng vé:</label>
+          <select id="seat-count">
+            <option value="1">1 vé</option>
+            <option value="2" selected>2 vé</option>
+            <option value="3">3 vé</option>
+            <option value="4">4 vé</option>
+          </select>
+        </div>
+        <div class="modal-info">
+          <span>Ghế khả dụng:</span> <strong id="modal-remaining-seats">--</strong>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="btn-confirm-book">
+          Xác Nhận Đặt Vé
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

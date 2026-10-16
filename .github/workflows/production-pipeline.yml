@@ -1,0 +1,144 @@
+name: Production Self-Hosted CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # STAGE 1: Code Quality & Unit Tests
+  # ─────────────────────────────────────────────────────────────
+  test-and-lint:
+    name: 🧪 Quality Check & Unit Tests
+    runs-on: self-hosted
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Test & Lint Backend
+        run: |
+          cd backend
+          npm install --quiet
+          npm run lint
+          npm run test
+
+      - name: Test & Lint Gateway
+        run: |
+          cd gateway
+          npm install --quiet
+          npm run lint
+          npm run test
+
+  # ─────────────────────────────────────────────────────────────
+  # STAGE 2: Build & Import Images into Local K3s Containerd
+  # ─────────────────────────────────────────────────────────────
+  build-and-import:
+    name: 🐳 Build & Import Images
+    needs: test-and-lint
+    runs-on: self-hosted
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    outputs:
+      image_tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Generate Immutable Version Tag (SemVer + Git SHA)
+        id: version
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          TAG="v1.0.0-${SHORT_SHA}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Building target version: ${TAG}"
+
+      - name: Build Images via Podman
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          echo "==> Building Backend image: movie-backend:${TAG}..."
+          podman build -t "movie-backend:${TAG}" -f backend/Dockerfile backend/
+
+          echo "==> Building Gateway image: movie-gateway:${TAG}..."
+          podman build -t "movie-gateway:${TAG}" -f gateway/Dockerfile gateway/
+
+          echo "==> Building Frontend image: movie-frontend:${TAG}..."
+          podman build -t "movie-frontend:${TAG}" -f frontend/Dockerfile frontend/
+
+      - name: Import Images directly into K3s containerd
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          echo "==> Importing images to K3s containerd runtime..."
+          podman save "movie-backend:${TAG}"  | sudo /usr/bin/k3s ctr -n k8s.io images import -
+          podman save "movie-gateway:${TAG}"  | sudo /usr/bin/k3s ctr -n k8s.io images import -
+          podman save "movie-frontend:${TAG}" | sudo /usr/bin/k3s ctr -n k8s.io images import -
+
+          # Tag aliases for Kubernetes resolution
+          sudo /usr/bin/k3s ctr -n k8s.io images tag "localhost/movie-backend:${TAG}" "movie-backend:${TAG}"
+          sudo /usr/bin/k3s ctr -n k8s.io images tag "localhost/movie-backend:${TAG}" "docker.io/library/movie-backend:${TAG}"
+
+          sudo /usr/bin/k3s ctr -n k8s.io images tag "localhost/movie-gateway:${TAG}" "movie-gateway:${TAG}"
+          sudo /usr/bin/k3s ctr -n k8s.io images tag "localhost/movie-gateway:${TAG}" "docker.io/library/movie-gateway:${TAG}"
+
+          sudo /usr/bin/k3s ctr -n k8s.io images tag "localhost/movie-frontend:${TAG}" "movie-frontend:${TAG}"
+          sudo /usr/bin/k3s ctr -n k8s.io images tag "localhost/movie-frontend:${TAG}" "docker.io/library/movie-frontend:${TAG}"
+
+  # ─────────────────────────────────────────────────────────────
+  # STAGE 3: Zero-Downtime Rolling Update & Automated Rollback
+  # ─────────────────────────────────────────────────────────────
+  deploy-kubernetes:
+    name: 🚀 Zero-Downtime Rolling Update to K8s
+    needs: build-and-import
+    runs-on: self-hosted
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Apply Base K8s Manifests (Configs, Services, Ingress, HPA)
+        run: |
+          kubectl apply -f k8s/01-namespace.yaml
+          kubectl apply -f k8s/02-external-mysql.yaml
+          kubectl apply -f k8s/03-configmap.yaml
+          kubectl apply -f k8s/03-secret.yaml 2>/dev/null || kubectl apply -f k8s/03-secret.yaml.example
+          kubectl apply -f k8s/04-redis.yaml
+          kubectl apply -f k8s/08-ingress.yaml
+          kubectl apply -f k8s/09-hpa.yaml
+
+      - name: Execute Rolling Update
+        run: |
+          TAG="${{ needs.build-and-import.outputs.image_tag }}"
+          echo "==> Rolling update Backend to: $TAG"
+          kubectl set image deployment/backend-service backend=movie-backend:${TAG} -n movie-booking
+
+          echo "==> Rolling update Gateway to: $TAG"
+          kubectl set image deployment/gateway-service gateway=movie-gateway:${TAG} -n movie-booking
+
+          echo "==> Rolling update Frontend to: $TAG"
+          kubectl set image deployment/frontend-service frontend=movie-frontend:${TAG} -n movie-booking
+
+      - name: Verify Rollout Status (Zero-downtime gate)
+        run: |
+          echo "==> Giám sát trạng thái cập nhật Backend..."
+          kubectl rollout status deployment/backend-service -n movie-booking --timeout=120s
+
+          echo "==> Giám sát trạng thái cập nhật Gateway..."
+          kubectl rollout status deployment/gateway-service -n movie-booking --timeout=120s
+
+          echo "==> Giám sát trạng thái cập nhật Frontend..."
+          kubectl rollout status deployment/frontend-service -n movie-booking --timeout=120s
+
+          echo "==> Kiểm tra lịch sử cập nhật:"
+          kubectl rollout history deployment/backend-service -n movie-booking
+
+      - name: 🚨 Automated Rollback on Failure
+        if: failure()
+        run: |
+          echo "⚠️ Phát hiện lỗi trong quá trình Rollout! Kích hoạt Rollback về phiên bản cũ ngay lập tức..."
+          kubectl rollout undo deployment/backend-service -n movie-booking
+          kubectl rollout undo deployment/gateway-service -n movie-booking
+          kubectl rollout undo deployment/frontend-service -n movie-booking
+          echo "✅ Đã khôi phục hoàn tất về Revision trước đó để bảo vệ hệ thống!"

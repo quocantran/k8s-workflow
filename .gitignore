@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment & Secrets (Crucial: never commit secrets!)
+.env
+.env.*
+!.env.example
+*.env
+k8s/*secret*.yaml
+!k8s/*secret*.example
+!k8s/*secret*.yaml.example
+
+# Certificates & Private Keys
+*.pem
+*.key
+*.crt
+*.cert
+*.pfx
+*.p12
+
+# Kubeconfig
+*kubeconfig*
+.kube/
+
+# Container tar exports
+*.tar
+*.tar.gz
+
+# Logs & Debug
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

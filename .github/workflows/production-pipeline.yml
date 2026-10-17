@@ -13,6 +13,9 @@ env:
   PATH: /usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
   REGISTRY_AUTH_FILE: /etc/containers/auth.json
 
+permissions:
+  contents: write
+
 jobs:
   # ─────────────────────────────────────────────────────────────
   # STAGE 1: Code Quality & Unit Tests

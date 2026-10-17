@@ -10,6 +10,7 @@ on:
 # CI NEVER directly connects to or modifies the Kubernetes cluster.
 
 env:
+  PATH: /usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
   REGISTRY_AUTH_FILE: /etc/containers/auth.json
 
 jobs:

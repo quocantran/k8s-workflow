@@ -86,6 +86,12 @@ jobs:
 
           echo "✅ Đã đẩy thành công tất cả Docker images lên Docker Hub!"
 
+      - name: Prune Dangling Build Images
+        if: always()
+        run: |
+          echo "==> Cleaning up dangling build layers..."
+          podman image prune -f || true
+
   # ─────────────────────────────────────────────────────────────
   # STAGE 3: GitOps Manifest Promotion (No direct K8s access)
   # ─────────────────────────────────────────────────────────────

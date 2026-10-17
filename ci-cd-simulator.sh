@@ -59,6 +59,9 @@ podman push "${REGISTRY}/movie-frontend:${TARGET_VERSION}"
 
 echo "✅ [CI] Toàn bộ images phiên bản ${TARGET_VERSION} đã có mặt trên Docker Hub!"
 
+echo ">> [CI] Dọn dẹp các layer rác (dangling build layers)..."
+podman image prune -f >/dev/null 2>&1 || true
+
 # ──────────────────────────────────────────────────────────────────────────
 # GIAI ĐOẠN 4: Cập Nhật GitOps Manifests & Commit Git (CI GitOps Boundary)
 # ──────────────────────────────────────────────────────────────────────────

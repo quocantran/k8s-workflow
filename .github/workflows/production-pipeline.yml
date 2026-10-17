@@ -9,6 +9,9 @@ on:
 # GitOps Principle: CI strictly builds, tests, pushes images, and updates Git manifests.
 # CI NEVER directly connects to or modifies the Kubernetes cluster.
 
+env:
+  REGISTRY_AUTH_FILE: /etc/containers/auth.json
+
 jobs:
   # ─────────────────────────────────────────────────────────────
   # STAGE 1: Code Quality & Unit Tests

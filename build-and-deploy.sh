@@ -31,12 +31,14 @@ podman push "${REGISTRY}/movie-frontend:$TAG"
 
 # 3. Synchronize with ArgoCD GitOps
 echo "==> [5/5] Kích hoạt ArgoCD GitOps Application..."
-kubectl apply -f argocd/application.yaml
+if [ -f "../k8s-gitops/argocd/application-production.yaml" ]; then
+  kubectl apply -f ../k8s-gitops/argocd/application-production.yaml
+fi
 
 echo "============================================================"
 echo "✅ HOÀN TẤT ĐẨY DOCKER HUB VÀ KHỞI TẠO ARGOCD GITOPS!"
-echo "Kiểm tra ArgoCD: argocd app get movie-booking-app"
+echo "Kiểm tra ArgoCD: argocd app get movie-booking-production"
 echo "Kiểm tra Pods:   kubectl get pods -n movie-booking"
 echo "Truy cập Web:    http://127.0.0.1:30080/"
-echo "Dashboard Argo:  http://127.0.0.1:30880/"
+echo "Dashboard Argo:  http://192.168.48.100:30880/"
 echo "============================================================"

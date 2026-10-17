@@ -24,7 +24,7 @@ spec:
       - name: dockerhub-secret
       containers:
       - name: backend
-        image: docker.io/quocantran/movie-backend:v1.0.0
+        image: docker.io/quocantran/movie-backend:v1.0.1
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 5000

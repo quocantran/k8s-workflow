@@ -24,7 +24,7 @@ spec:
       - name: dockerhub-secret
       containers:
       - name: gateway
-        image: docker.io/quocantran/movie-gateway:v1.0.0
+        image: docker.io/quocantran/movie-gateway:v1.0.1
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 8080

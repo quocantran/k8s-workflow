@@ -14,7 +14,7 @@ env:
   REGISTRY_AUTH_FILE: /etc/containers/auth.json
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # ─────────────────────────────────────────────────────────────
@@ -106,6 +106,8 @@ jobs:
     name: 🚀 GitOps Manifest Promotion (ArgoCD Source)
     needs: build-and-push
     runs-on: self-hosted
+    permissions:
+      contents: write
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       - name: Checkout Code

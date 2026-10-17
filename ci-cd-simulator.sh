@@ -130,6 +130,6 @@ echo "==========================================================================
 echo "🎉 CHÚC MỪNG: HỆ THỐNG GITOPS HOẠT ĐỘNG HOÀN TOÀN TỰ ĐỘNG VÀ CHUẨN PRODUCTION!"
 echo "   - Container Registry: Docker Hub (quocantran)"
 echo "   - GitOps Controller : ArgoCD v3.5.5"
-echo "   - ArgoCD Dashboard  : http://192.168.48.100:30880 (admin / 4WpLvG7gxIozrLy0)"
+echo "   - ArgoCD Dashboard  : http://192.168.48.100:30880 (user: admin)"
 echo "   - Web Application   : http://192.168.48.100:30080"
 echo "=========================================================================="

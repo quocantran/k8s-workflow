@@ -17,10 +17,10 @@ resources:
 images:
 - name: docker.io/quocantran/movie-backend
   newName: docker.io/quocantran/movie-backend
-  newTag: v1.0.1
+  newTag: v1.0.0-51eedc0
 - name: docker.io/quocantran/movie-frontend
   newName: docker.io/quocantran/movie-frontend
-  newTag: v1.0.1
+  newTag: v1.0.0-51eedc0
 - name: docker.io/quocantran/movie-gateway
   newName: docker.io/quocantran/movie-gateway
-  newTag: v1.0.1
+  newTag: v1.0.0-51eedc0

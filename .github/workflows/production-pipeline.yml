@@ -100,49 +100,45 @@ jobs:
           podman image prune -f || true
 
   # ─────────────────────────────────────────────────────────────
-  # STAGE 3: GitOps Manifest Promotion (No direct K8s access)
+  # STAGE 3: GitOps Manifest Promotion (Target: k8s-gitops Repo)
   # ─────────────────────────────────────────────────────────────
   promote-gitops:
-    name: 🚀 GitOps Manifest Promotion (ArgoCD Source)
+    name: 🚀 GitOps Promotion to k8s-gitops Repo
     needs: build-and-push
     runs-on: self-hosted
     permissions:
       contents: write
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
-      - name: Checkout Code
+      - name: Checkout k8s-gitops Manifests Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          repository: quocantran/k8s-gitops
+          token: ${{ secrets.GITOPS_TOKEN || github.token }}
+          path: gitops-repo
 
       - name: Update Kubernetes Manifests Image Tags
         run: |
           TAG="${{ needs.build-and-push.outputs.image_tag }}"
-          echo "==> Bumping GitOps image tag to ${TAG}..."
+          echo "==> Bumping GitOps image tag to ${TAG} in k8s-gitops..."
           
-          # Update k8s/kustomization.yaml
-          cd k8s
+          cd gitops-repo/apps/movie-booking/overlays/production
           kustomize edit set image docker.io/quocantran/movie-backend="docker.io/quocantran/movie-backend:${TAG}"
           kustomize edit set image docker.io/quocantran/movie-gateway="docker.io/quocantran/movie-gateway:${TAG}"
           kustomize edit set image docker.io/quocantran/movie-frontend="docker.io/quocantran/movie-frontend:${TAG}"
-          
-          # Also sync base deployment manifests for transparency
-          sed -i -E "s|image: docker.io/quocantran/movie-backend:.*|image: docker.io/quocantran/movie-backend:${TAG}|g" 05-backend.yaml
-          sed -i -E "s|image: docker.io/quocantran/movie-gateway:.*|image: docker.io/quocantran/movie-gateway:${TAG}|g" 06-gateway.yaml
-          sed -i -E "s|image: docker.io/quocantran/movie-frontend:.*|image: docker.io/quocantran/movie-frontend:${TAG}|g" 07-frontend.yaml
-          cd ..
 
-      - name: Commit & Push to Git Repository (Triggering ArgoCD)
+      - name: Commit & Push to k8s-gitops (Triggering ArgoCD)
         run: |
           TAG="${{ needs.build-and-push.outputs.image_tag }}"
+          cd gitops-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add k8s/
+          git add apps/movie-booking/overlays/
           if git diff --staged --quiet; then
-            echo "No manifest changes detected."
+            echo "No manifest changes detected in k8s-gitops."
           else
             git commit -m "chore(gitops): promote image tags to ${TAG} [skip ci]"
-            git push origin HEAD:${{ github.ref }}
-            echo "✅ Đã commit & push GitOps manifest lên Git. ArgoCD sẽ tự động hòa giải (reconcile)!"
+            git push origin HEAD:main
+            echo "✅ Đã commit & push GitOps manifest lên quocantran/k8s-gitops. ArgoCD sẽ tự động hòa giải (reconcile)!"
           fi

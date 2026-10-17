@@ -63,30 +63,28 @@ echo ">> [CI] Dọn dẹp các layer rác (dangling build layers)..."
 podman image prune -f >/dev/null 2>&1 || true
 
 # ──────────────────────────────────────────────────────────────────────────
-# GIAI ĐOẠN 4: Cập Nhật GitOps Manifests & Commit Git (CI GitOps Boundary)
+# GIAI ĐOẠN 4: Cập Nhật GitOps Manifests Trong k8s-gitops Repo (CI Boundary)
 # ──────────────────────────────────────────────────────────────────────────
 echo ""
-echo "─── [Giai Đoạn 4/5] Cập Nhật GitOps Manifests (Không Chạm K8s) ───"
-echo ">> [CI] Cập nhật image tag trong k8s/kustomization.yaml và manifests..."
+echo "─── [Giai Đoạn 4/5] Cập Nhật GitOps Manifests Sang Repo k8s-gitops ───"
+GITOPS_DIR="../k8s-gitops"
 
-cd k8s
-kustomize edit set image docker.io/quocantran/movie-backend="${REGISTRY}/movie-backend:${TARGET_VERSION}"
-kustomize edit set image docker.io/quocantran/movie-gateway="${REGISTRY}/movie-gateway:${TARGET_VERSION}"
-kustomize edit set image docker.io/quocantran/movie-frontend="${REGISTRY}/movie-frontend:${TARGET_VERSION}"
+if [ -d "$GITOPS_DIR" ]; then
+  echo ">> [CI] Tìm thấy thư mục GitOps: $GITOPS_DIR"
+  echo ">> [CI] Cập nhật image tag trong overlays/production/kustomization.yaml..."
+  
+  (
+    cd "$GITOPS_DIR/apps/movie-booking/overlays/production"
+    kustomize edit set image docker.io/quocantran/movie-backend="${REGISTRY}/movie-backend:${TARGET_VERSION}"
+    kustomize edit set image docker.io/quocantran/movie-gateway="${REGISTRY}/movie-gateway:${TARGET_VERSION}"
+    kustomize edit set image docker.io/quocantran/movie-frontend="${REGISTRY}/movie-frontend:${TARGET_VERSION}"
+  )
 
-sed -i -E "s|image: docker.io/quocantran/movie-backend:.*|image: ${REGISTRY}/movie-backend:${TARGET_VERSION}|g" 05-backend.yaml
-sed -i -E "s|image: docker.io/quocantran/movie-gateway:.*|image: ${REGISTRY}/movie-gateway:${TARGET_VERSION}|g" 06-gateway.yaml
-sed -i -E "s|image: docker.io/quocantran/movie-frontend:.*|image: ${REGISTRY}/movie-frontend:${TARGET_VERSION}|g" 07-frontend.yaml
-cd ..
-
-echo ">> [CI] Commit thay đổi cấu hình vào Git (Git là Single Source of Truth)..."
-git add k8s/
-if git diff --staged --quiet; then
-  echo "Không có thay đổi manifest cần commit."
+  echo ">> [CI] Kiểm tra kustomize build production..."
+  kustomize build "$GITOPS_DIR/apps/movie-booking/overlays/production" >/dev/null
+  echo "✅ [CI] Kustomize build overlays/production hợp lệ!"
 else
-  git commit -m "chore(gitops): promote microservices to ${TARGET_VERSION} [skip ci]"
-  echo ">> [CI] Pushing Git commit lên remote repository GitHub..."
-  git push origin main
+  echo "⚠️ [CI] Không tìm thấy thư mục $GITOPS_DIR. Bỏ qua bước cập nhật local."
 fi
 
 echo "=========================================================================="
@@ -98,19 +96,20 @@ echo "==========================================================================
 # ──────────────────────────────────────────────────────────────────────────
 echo ""
 echo "─── [Giai Đoạn 5/5] ArgoCD Tự Động Kéo (Pull) Manifest & Triển Khai ───"
-echo ">> [CD] Kích hoạt ArgoCD đồng bộ ứng dụng 'movie-booking-app'..."
+echo ">> [CD] Kích hoạt ArgoCD đồng bộ ứng dụng 'movie-booking-production'..."
 
-# Đảm bảo argocd application đã tồn tại
-if ! kubectl get application movie-booking-app -n argocd >/dev/null 2>&1; then
-  echo ">> [CD] Khởi tạo ArgoCD Application lần đầu..."
-  kubectl apply -f argocd/application.yaml
+if [ -f "$GITOPS_DIR/argocd/application-production.yaml" ]; then
+  if ! kubectl get application movie-booking-production -n argocd >/dev/null 2>&1; then
+    echo ">> [CD] Khởi tạo ArgoCD Application movie-booking-production..."
+    kubectl apply -f "$GITOPS_DIR/argocd/application-production.yaml"
+  fi
 fi
 
 # Đồng bộ qua ArgoCD CLI hoặc API
-argocd app sync movie-booking-app --prune=false >/dev/null 2>&1 || true
+argocd app sync movie-booking-production --prune=false >/dev/null 2>&1 || true
 
 echo ">> [CD] Đang chờ ArgoCD đồng bộ trạng thái và kiểm tra sức khỏe hệ thống..."
-argocd app wait movie-booking-app --health --timeout 180 >/dev/null 2>&1 || {
+argocd app wait movie-booking-production --health --timeout 180 >/dev/null 2>&1 || {
   echo ">> [CD] Theo dõi trạng thái Rollout của Backend..."
   kubectl rollout status deployment/backend-service -n movie-booking --timeout=120s
 }

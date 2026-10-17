@@ -20,9 +20,11 @@ spec:
       labels:
         app: gateway-service
     spec:
+      imagePullSecrets:
+      - name: dockerhub-secret
       containers:
       - name: gateway
-        image: movie-gateway:v1.0.0
+        image: docker.io/quocantran/movie-gateway:v1.0.0
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 8080

@@ -20,9 +20,11 @@ spec:
       labels:
         app: backend-service
     spec:
+      imagePullSecrets:
+      - name: dockerhub-secret
       containers:
       - name: backend
-        image: movie-backend:v1.0.0
+        image: docker.io/quocantran/movie-backend:v1.0.0
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 5000

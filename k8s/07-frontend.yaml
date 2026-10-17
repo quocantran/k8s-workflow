@@ -20,9 +20,11 @@ spec:
       labels:
         app: frontend-service
     spec:
+      imagePullSecrets:
+      - name: dockerhub-secret
       containers:
       - name: frontend
-        image: movie-frontend:v1.0.0
+        image: docker.io/quocantran/movie-frontend:v1.0.0
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 3000
